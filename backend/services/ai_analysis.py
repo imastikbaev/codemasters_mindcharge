@@ -214,7 +214,7 @@ def _rule_based_reply(text: str, language: str) -> dict:
 
 # ─── Public API ──────────────────────────────────────────────────────────────
 
-def chat_with_ai(messages: list, language: str = "ru") -> dict:
+def chat_with_ai(messages: list, language: str = "ru", user_context: dict = {}) -> dict:
     last_user_msg = next(
         (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
     )
@@ -223,15 +223,38 @@ def chat_with_ai(messages: list, language: str = "ru") -> dict:
         return _rule_based_reply(last_user_msg, language)
 
     lang = language if language in CHAT_SYSTEM else "ru"
+
+    system = CHAT_SYSTEM[lang]
+    if user_context:
+        level_labels = {
+            "norm": {"ru": "норма", "en": "normal", "kz": "қалыпты"},
+            "elevated": {"ru": "повышенный стресс", "en": "elevated stress", "kz": "жоғары стресс"},
+            "burnout_risk": {"ru": "риск выгорания", "en": "burnout risk", "kz": "күйіп-жану қаупі"},
+            "critical": {"ru": "критическое состояние", "en": "critical state", "kz": "сын жағдай"},
+        }
+        level = user_context.get("level", "")
+        level_label = level_labels.get(level, {}).get(lang, level)
+        score = user_context.get("score", "")
+        summary = user_context.get("summary", "")
+        recs = user_context.get("recommendations", [])
+        recs_text = "\n".join(f"- {r}" for r in recs[:3]) if recs else ""
+
+        context_block = {
+            "ru": f"\n\n[Контекст пользователя]\nПоследний тест: уровень — {level_label}, балл — {score}/100.\nРезюме: {summary}\nРекомендации из теста:\n{recs_text}\nИспользуй этот контекст в разговоре — можешь ссылаться на результаты теста, но не зачитывай их дословно.",
+            "en": f"\n\n[User context]\nLast test: level — {level_label}, score — {score}/100.\nSummary: {summary}\nTest recommendations:\n{recs_text}\nUse this context naturally in conversation — you can reference the test results but don't recite them verbatim.",
+            "kz": f"\n\n[Пайдаланушы контексті]\nСоңғы тест: деңгей — {level_label}, балл — {score}/100.\nҚорытынды: {summary}\nТест ұсыныстары:\n{recs_text}\nБұл контексті әңгімеде пайдалан — тест нәтижелеріне сілтеме жасай аласың.",
+        }
+        system = system + context_block.get(lang, context_block["ru"])
+
     try:
-        raw = _chat_completion(CHAT_SYSTEM[lang], messages, json_mode=True)
+        raw = _chat_completion(system, messages, json_mode=True)
         result = json.loads(raw)
         if "reply" not in result:
             result["reply"] = raw
         if "actions" not in result:
             result["actions"] = []
         return result
-    except Exception as e:
+    except Exception:
         return _rule_based_reply(last_user_msg, language)
 
 

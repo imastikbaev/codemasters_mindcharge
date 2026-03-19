@@ -75,7 +75,7 @@ for ud in users_data:
 db.commit()
 print(f"Created {len(users_data)} demo users (password: demo1234)")
 
-# ================== TESTS ==================
+#tests
 
 pss10 = Test(
     id=gen_id(),

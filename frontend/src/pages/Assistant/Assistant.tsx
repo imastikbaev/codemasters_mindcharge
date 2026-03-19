@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Send, MessageSquare, Mic, MicOff } from 'lucide-react'
-import { aiApi } from '../../api'
+import { aiApi, testsApi } from '../../api'
 import { useAuthStore } from '../../store/authStore'
 import { useNavigate } from 'react-router-dom'
 
@@ -9,22 +9,20 @@ interface Message { role: 'user' | 'assistant'; content: string }
 
 const INITIALS_COLORS = ['bg-blue-100 text-blue-700', 'bg-violet-100 text-violet-700', 'bg-emerald-100 text-emerald-700']
 
+const LEVEL_GREET: Record<string, Record<string, string>> = {
+  norm:         { ru: 'Ваш последний результат — норма. Это хороший знак!', en: 'Your last result looks good — within normal range!', kz: 'Соңғы нәтижеңіз қалыпты. Бұл жақсы белгі!' },
+  elevated:     { ru: 'Вижу, что у вас был повышенный стресс по последнему тесту. Как сейчас?', en: "I see your last test showed elevated stress. How are you feeling now?", kz: 'Соңғы тестте жоғары стресс байқалды. Қазір қалайсыз?' },
+  burnout_risk: { ru: 'Замечаю, что ваш последний тест показал риск выгорания. Хочу поговорить об этом.', en: 'Your last test showed burnout risk. I want to talk about that.', kz: 'Соңғы тестіңізде күйіп-жану қаупі байқалды. Осы туралы сөйлескім келеді.' },
+  critical:     { ru: 'Вижу ваш последний результат. Хочу убедиться, что вы в порядке. Как вы сейчас?', en: "I've seen your last result. I want to make sure you're okay. How are you right now?", kz: 'Соңғы нәтижеңізді көрдім. Жағдайыңыз жақсы екеніне көз жеткізгім келеді.' },
+}
+
 export default function Assistant() {
   const { t } = useTranslation()
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const lang = user?.preferred_language || 'ru'
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: lang === 'en'
-        ? "Hi! I'm EMi, your MindCharge assistant. How are you feeling today?"
-        : lang === 'kz'
-        ? 'Сәлем! Мен EMi — сіздің MindCharge ассистентіңізмін. Бүгін өзіңізді қалай сезінесіз?'
-        : 'Привет! Я EMi — ваш ассистент MindCharge. Как вы себя чувствуете сегодня?',
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [loading, setLoading] = useState(false)
@@ -32,6 +30,28 @@ export default function Assistant() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<any>(null)
+
+  useEffect(() => {
+    testsApi.mySessions().then(res => {
+      const last = res.data?.[0]
+      let greeting = lang === 'en'
+        ? "Hi! I'm EMi, your MindCharge assistant. How are you feeling today?"
+        : lang === 'kz'
+        ? 'Сәлем! Мен EMi — MindCharge ассистентіңізмін. Бүгін өзіңізді қалай сезінесіз?'
+        : 'Привет! Я EMi — ваш ассистент MindCharge. Как вы себя чувствуете сегодня?'
+
+      if (last?.ai_level) {
+        const extra = LEVEL_GREET[last.ai_level]?.[lang] || ''
+        if (extra) greeting = greeting + ' ' + extra
+      }
+      setMessages([{ role: 'assistant', content: greeting }])
+    }).catch(() => {
+      setMessages([{ role: 'assistant', content: lang === 'en'
+        ? "Hi! I'm EMi. How are you feeling today?"
+        : lang === 'kz' ? 'Сәлем! Мен EMi. Бүгін қалайсыз?'
+        : 'Привет! Я EMi. Как вы себя чувствуете сегодня?' }])
+    })
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -99,13 +119,9 @@ export default function Assistant() {
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             {m.role === 'assistant' ? (
-              <div className="w-8 h-8 rounded-xl bg-primary-100 text-primary-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                E
-              </div>
+              <div className="w-8 h-8 rounded-xl bg-primary-100 text-primary-700 text-xs font-bold flex items-center justify-center flex-shrink-0">E</div>
             ) : (
-              <div className={`w-8 h-8 rounded-xl text-xs font-bold flex items-center justify-center flex-shrink-0 ${INITIALS_COLORS[0]}`}>
-                {userInitials}
-              </div>
+              <div className={`w-8 h-8 rounded-xl text-xs font-bold flex items-center justify-center flex-shrink-0 ${INITIALS_COLORS[0]}`}>{userInitials}</div>
             )}
             <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
               m.role === 'user'
@@ -135,16 +151,11 @@ export default function Assistant() {
       <div className="flex-shrink-0 space-y-3">
         <div className="flex flex-wrap gap-2">
           {quickActions.map((a, i) => (
-            <button
-              key={i}
-              onClick={() => sendMessage(a)}
-              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-            >
+            <button key={i} onClick={() => sendMessage(a)} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors">
               {a}
             </button>
           ))}
         </div>
-
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -154,19 +165,10 @@ export default function Assistant() {
             placeholder={t('assistant.placeholder')}
             className="input flex-1 py-3"
           />
-          <button
-            onClick={toggleVoice}
-            className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-              listening ? 'bg-red-50 border-red-300 text-red-500' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-            }`}
-          >
+          <button onClick={toggleVoice} className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all ${listening ? 'bg-red-50 border-red-300 text-red-500' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
             {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || loading}
-            className="btn-primary w-11 h-11 rounded-xl flex-shrink-0"
-          >
+          <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading} className="btn-primary w-11 h-11 rounded-xl flex-shrink-0">
             <Send className="w-4 h-4" />
           </button>
         </div>

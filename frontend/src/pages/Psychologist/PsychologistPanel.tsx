@@ -26,6 +26,25 @@ export default function PsychologistPanel() {
       .finally(() => setLoading(false))
   }, [])
 
+  const downloadCSV = () => {
+    if (!overview) return
+    const rows = [
+      ['Группа', 'Норма', 'Повышенный', 'Риск выгорания', 'Критическое', 'Средний балл'],
+      ...groups.map((g: any) => [g.group_name, g.norm, g.elevated, g.burnout_risk, g.critical, g.avg_score]),
+      [],
+      ['Итого пользователей', overview.total_users],
+      ['Критических случаев', overview.critical_count],
+    ]
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `mindcharge-report-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="card p-5 h-24 animate-pulse" />)}</div>
@@ -53,7 +72,7 @@ export default function PsychologistPanel() {
           <h1 className="text-2xl font-bold text-gray-900">{t('psychologist.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">Аналитика и мониторинг пользователей</p>
         </div>
-        <button onClick={() => alert('CSV export')} className="btn-secondary gap-2">
+        <button onClick={downloadCSV} className="btn-secondary gap-2">
           <Download className="w-4 h-4" />
           {t('psychologist.downloadReport')}
         </button>
@@ -132,7 +151,7 @@ export default function PsychologistPanel() {
                 <XAxis dataKey="group_name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ border: 'none', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,.1)', fontSize: 12 }} />
-                <Bar dataKey="norm" stackId="a" fill="#10b981" radius={[0,0,0,0]} name={labels[0]} />
+                <Bar dataKey="norm" stackId="a" fill="#10b981" name={labels[0]} />
                 <Bar dataKey="elevated" stackId="a" fill="#f59e0b" name={labels[1]} />
                 <Bar dataKey="burnout_risk" stackId="a" fill="#f97316" name={labels[2]} />
                 <Bar dataKey="critical" stackId="a" fill="#ef4444" radius={[4,4,0,0]} name={labels[3]} />
@@ -160,18 +179,10 @@ export default function PsychologistPanel() {
                 {groups.map((g: any) => (
                   <tr key={g.group_name} className="table-row">
                     <td className="px-5 py-3.5 font-medium text-gray-800">{g.group_name}</td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="badge bg-emerald-50 text-emerald-700">{g.norm}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="badge bg-amber-50 text-amber-700">{g.elevated}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="badge bg-orange-50 text-orange-700">{g.burnout_risk}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="badge bg-red-50 text-red-700">{g.critical}</span>
-                    </td>
+                    <td className="px-4 py-3.5 text-center"><span className="badge bg-emerald-50 text-emerald-700">{g.norm}</span></td>
+                    <td className="px-4 py-3.5 text-center"><span className="badge bg-amber-50 text-amber-700">{g.elevated}</span></td>
+                    <td className="px-4 py-3.5 text-center"><span className="badge bg-orange-50 text-orange-700">{g.burnout_risk}</span></td>
+                    <td className="px-4 py-3.5 text-center"><span className="badge bg-red-50 text-red-700">{g.critical}</span></td>
                     <td className="px-4 py-3.5 text-center font-semibold text-gray-900">{g.avg_score}%</td>
                   </tr>
                 ))}
@@ -210,9 +221,7 @@ export default function PsychologistPanel() {
                       <tr key={c.session_id} className="table-row">
                         <td className="px-5 py-3.5 font-medium text-gray-800">{c.user_name}</td>
                         <td className="px-4 py-3.5 text-gray-500">{c.group_name || '—'}</td>
-                        <td className="px-4 py-3.5 text-center">
-                          <LevelBadge level="critical" lang={lang} size="sm" />
-                        </td>
+                        <td className="px-4 py-3.5 text-center"><LevelBadge level="critical" lang={lang} size="sm" /></td>
                         <td className="px-4 py-3.5 text-gray-500">
                           {c.completed_at ? new Date(c.completed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
                         </td>

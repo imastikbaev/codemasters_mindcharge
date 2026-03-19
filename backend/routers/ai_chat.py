@@ -2,12 +2,27 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, ChatSession, ChatMessage
+from models import User, ChatSession, ChatMessage, TestSession
 from schemas import ChatMessageIn, ChatResponseOut, ChatMessageOut
 from services.auth import get_current_user
 from services.ai_analysis import chat_with_ai
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
+
+
+def _get_user_test_context(user_id: str, db: Session) -> dict:
+    last = db.query(TestSession).filter(
+        TestSession.user_id == user_id,
+        TestSession.completed_at.isnot(None)
+    ).order_by(TestSession.completed_at.desc()).first()
+    if not last:
+        return {}
+    return {
+        "level": last.ai_level,
+        "score": round(last.normalized_score or 0),
+        "summary": last.ai_summary or "",
+        "recommendations": last.ai_recommendations_json or [],
+    }
 
 
 @router.post("/chat", response_model=ChatResponseOut)
@@ -37,7 +52,8 @@ def chat(
     messages.append({"role": "user", "content": data.message})
 
     lang = data.language or current_user.preferred_language
-    ai_response = chat_with_ai(messages, lang)
+    user_context = _get_user_test_context(current_user.id, db)
+    ai_response = chat_with_ai(messages, lang, user_context=user_context)
 
     user_msg = ChatMessage(session_id=session.id, role="user", content=data.message)
     assistant_msg = ChatMessage(
