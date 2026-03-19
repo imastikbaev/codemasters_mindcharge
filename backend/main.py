@@ -11,6 +11,19 @@ from routers import auth, tests, courses, ai_chat, analytics, users
 
 Base.metadata.create_all(bind=engine)
 
+# Auto-seed on startup if DB is empty
+try:
+    from database import SessionLocal
+    db = SessionLocal()
+    from models import User
+    if db.query(User).count() == 0:
+        db.close()
+        import seed
+    else:
+        db.close()
+except Exception as e:
+    print(f"Seed check error: {e}")
+
 app = FastAPI(title="MindCharge API", version="1.0.0")
 
 app.add_middleware(
