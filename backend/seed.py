@@ -38,11 +38,11 @@ db.commit()
 db.refresh(inst)
 
 users_data = [
-    {"email": "user@demo.kz", "name": "Айгерим Сейткали", "role": UserRole.USER, "age_group": AgeGroup.ADULT, "group_name": "CS-301"},
-    {"email": "psych@demo.kz", "name": "Данияр Ахметов", "role": UserRole.PSYCHOLOGIST, "age_group": AgeGroup.ADULT},
-    {"email": "director@demo.kz", "name": "Нурлан Касымов", "role": UserRole.DIRECTOR, "age_group": AgeGroup.ADULT},
-    {"email": "admin@demo.kz", "name": "Admin", "role": UserRole.ADMIN, "age_group": AgeGroup.ADULT},
-    {"email": "teen@demo.kz", "name": "Темирлан Бекенов", "role": UserRole.USER, "age_group": AgeGroup.TEEN, "group_name": "11-А"},
+    {"email": "user@demo.kz", "name": "Пользователь Пользователев", "role": UserRole.USER, "age_group": AgeGroup.ADULT, "group_name": "CS-301"},
+    {"email": "psych@demo.kz", "name": "Психолог Психологович", "role": UserRole.PSYCHOLOGIST, "age_group": AgeGroup.ADULT},
+    {"email": "director@demo.kz", "name": "Директор Директорович", "role": UserRole.DIRECTOR, "age_group": AgeGroup.ADULT},
+    {"email": "admin@demo.kz", "name": "Админ Админович", "role": UserRole.ADMIN, "age_group": AgeGroup.ADULT},
+    {"email": "teen@demo.kz", "name": "Ученик Ученикович", "role": UserRole.USER, "age_group": AgeGroup.TEEN, "group_name": "11-А"},
 ]
 
 for ud in users_data:
