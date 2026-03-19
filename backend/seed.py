@@ -24,7 +24,21 @@ print("Seeding database...")
 
 existing = db.query(Institution).first()
 if existing:
-    print("Already seeded. Exiting.")
+    # Update demo user names if outdated
+    updates = [
+        ("user@demo.kz", "Пользователь Пользователев"),
+        ("psych@demo.kz", "Психолог Психологович"),
+        ("director@demo.kz", "Директор Директорович"),
+        ("admin@demo.kz", "Админ Админович"),
+        ("teen@demo.kz", "Ученик Ученикович"),
+    ]
+    from models import User
+    for email, name in updates:
+        u = db.query(User).filter(User.email == email).first()
+        if u and u.name != name:
+            u.name = name
+    db.commit()
+    print("Updated demo user names. Exiting.")
     db.close()
     sys.exit(0)
 
